@@ -3,7 +3,6 @@
 package iface
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -33,9 +32,4 @@ func (w *WGIface) Create() error {
 	}
 
 	return backoff.Retry(operation, backOff)
-}
-
-// CreateOnAndroid this function make sense on mobile only
-func (w *WGIface) CreateOnAndroid([]string, string, []string) error {
-	return fmt.Errorf("this function has not implemented on this platform")
 }

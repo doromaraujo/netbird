@@ -1540,13 +1540,15 @@ func (e *Engine) newWgIface() (*iface.WGIface, error) {
 
 	switch runtime.GOOS {
 	case "android":
-		opts.MobileArgs = &device.MobileIFaceArguments{
-			TunAdapter: e.mobileDep.TunAdapter,
-			TunFd:      int(e.mobileDep.FileDescriptor),
-		}
+		fallthrough
 	case "ios":
+		fd, fdErr := e.getFileDescriptor()
+		if fdErr != nil {
+			return nil, fdErr
+		}
+
 		opts.MobileArgs = &device.MobileIFaceArguments{
-			TunFd: int(e.mobileDep.FileDescriptor),
+			TunFd: fd,
 		}
 	}
 
@@ -1555,11 +1557,9 @@ func (e *Engine) newWgIface() (*iface.WGIface, error) {
 
 func (e *Engine) wgInterfaceCreate() (err error) {
 	switch runtime.GOOS {
-	case "android":
-		err = e.wgInterface.CreateOnAndroid(e.routeManager.InitialRouteRange(), e.dnsServer.DnsIP().String(), e.dnsServer.SearchDomains())
 	case "ios":
 		e.mobileDep.NetworkChangeListener.SetInterfaceIP(e.config.WgAddr)
-		err = e.wgInterface.Create()
+		fallthrough
 	default:
 		err = e.wgInterface.Create()
 	}

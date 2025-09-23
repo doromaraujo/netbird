@@ -3,8 +3,6 @@
 package device
 
 import (
-	"strings"
-
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"golang.zx2c4.com/wireguard/device"
@@ -19,13 +17,12 @@ import (
 
 // WGTunDevice ignore the WGTunDevice interface on Android because the creation of the tun device is different on this platform
 type WGTunDevice struct {
-	address    wgaddr.Address
-	port       int
-	key        string
-	mtu        uint16
-	iceBind    *bind.ICEBind
-	tunAdapter TunAdapter
-	disableDNS bool
+	address wgaddr.Address
+	port    int
+	key     string
+	mtu     uint16
+	iceBind *bind.ICEBind
+	tunFd   int
 
 	name           string
 	device         *device.Device
@@ -34,40 +31,21 @@ type WGTunDevice struct {
 	configurer     WGConfigurer
 }
 
-func NewTunDevice(address wgaddr.Address, port int, key string, mtu uint16, iceBind *bind.ICEBind, tunAdapter TunAdapter, disableDNS bool) *WGTunDevice {
+func NewTunDevice(address wgaddr.Address, port int, key string, mtu uint16, iceBind *bind.ICEBind, tunFd int) *WGTunDevice {
 	return &WGTunDevice{
-		address:    address,
-		port:       port,
-		key:        key,
-		mtu:        mtu,
-		iceBind:    iceBind,
-		tunAdapter: tunAdapter,
-		disableDNS: disableDNS,
+		address: address,
+		port:    port,
+		key:     key,
+		mtu:     mtu,
+		iceBind: iceBind,
+		tunFd:   tunFd,
 	}
 }
 
-func (t *WGTunDevice) Create(routes []string, dns string, searchDomains []string) (WGConfigurer, error) {
-	log.Info("create tun interface")
-
-	routesString := routesToString(routes)
-	searchDomainsToString := searchDomainsToString(searchDomains)
-
-	// Skip DNS configuration when DisableDNS is enabled
-	if t.disableDNS {
-		log.Info("DNS is disabled, skipping DNS and search domain configuration")
-		dns = ""
-		searchDomainsToString = ""
-	}
-
-	fd, err := t.tunAdapter.ConfigureInterface(t.address.String(), int(t.mtu), dns, searchDomainsToString, routesString)
+func (t *WGTunDevice) Create() (WGConfigurer, error) {
+	tunDevice, name, err := tun.CreateUnmonitoredTUNFromFD(t.tunFd)
 	if err != nil {
-		log.Errorf("failed to create Android interface: %s", err)
-		return nil, err
-	}
-
-	tunDevice, name, err := tun.CreateUnmonitoredTUNFromFD(fd)
-	if err != nil {
-		_ = unix.Close(fd)
+		_ = unix.Close(t.tunFd)
 		log.Errorf("failed to create Android interface: %s", err)
 		return nil, err
 	}
@@ -148,12 +126,4 @@ func (t *WGTunDevice) FilteredDevice() *FilteredDevice {
 
 func (t *WGTunDevice) GetNet() *netstack.Net {
 	return nil
-}
-
-func routesToString(routes []string) string {
-	return strings.Join(routes, ";")
-}
-
-func searchDomainsToString(searchDomains []string) string {
-	return strings.Join(searchDomains, ";")
 }

@@ -19,7 +19,6 @@ import (
 
 type wgIfaceBase interface {
 	Create() error
-	CreateOnAndroid(routeRange []string, ip string, domains []string) error
 	IsUserspaceBind() bool
 	Name() string
 	Address() wgaddr.Address

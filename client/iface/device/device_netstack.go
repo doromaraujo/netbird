@@ -143,3 +143,7 @@ func (t *TunNetstackDevice) Device() *device.Device {
 func (t *TunNetstackDevice) GetNet() *netstack.Net {
 	return t.net
 }
+
+func (t *TunNetstackDevice) Create() (WGConfigurer, error) {
+	return t.create()
+}
